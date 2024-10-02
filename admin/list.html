@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #e9ecef;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            padding: 15px 25px;
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .navbar img {
+            height: 50px;
+            width: auto;
+        }
+
+        .profile-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-menu img {
+            cursor: pointer;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            border: 2px solid #fff;
+            transition: transform 0.3s ease;
+        }
+
+        .profile-menu img:hover {
+            transform: scale(1.1);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 55px;
+            background-color: #fff;
+            min-width: 200px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        .dropdown-content a {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .dropdown-content a i {
+            margin-right: 12px;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f0f0f0;
+        }
+
+        .profile-menu:hover .dropdown-content {
+            display: block;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        h1 {
+            color: #007bff;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+            font-size: 18px;
+        }
+
+        td button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 8px;
+            border-radius: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        td button.view-btn {
+            color: #28a745;
+        }
+
+        td button.delete-btn {
+            color: #dc3545;
+        }
+
+        td button.view-btn:hover {
+            color: #1e7e34;
+        }
+
+        td button.delete-btn:hover {
+            color: #c82333;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .profile-menu {
+                margin-top: 10px;
+            }
+
+            table {
+                font-size: 14px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+    <div class="navbar">
+        <div class="profile-menu">
+            <img src="profile.png" alt="Profile Image" id="profile-img">
+            <div class="dropdown-content">
+                <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i>Logout</a>
+                <a href="#" id="change-password-btn"><i class="fas fa-key"></i>Change Password</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="title">Data Overview</h1>
+        
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="data-table">
+                <!-- Data will be populated here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+    apiKey: "AIzaSyA8lTdJWr2olZ8vCL_cXdlQLoWq9sBeAco",
+    authDomain: "mapp-6d326.firebaseapp.com",
+    databaseURL: "https://mapp-6d326-default-rtdb.firebaseio.com",
+    projectId: "mapp-6d326",
+    storageBucket: "mapp-6d326.appspot.com",
+    messagingSenderId: "219512936002",
+    appId: "1:219512936002:web:3c816c66770374799f3fdb",
+    measurementId: "G-GSFD3QCZMQ"
+  };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        function decrypt(encryptedText, key) {
+            const bytes = CryptoJS.AES.decrypt(encryptedText, key);
+            return bytes.toString(CryptoJS.enc.Utf8);
+        }
+
+        const database = firebase.database();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const usernam = urlParams.get("username");
+            const passwd = urlParams.get("password");
+            const encryptionKey = '8hTygdnl';
+            
+            const usernaame = decrypt(usernam, encryptionKey);
+            const passwoord = decrypt(passwd, encryptionKey);
+
+            const userRef = database.ref('auth');
+            userRef.once('value', (snapshot) => {
+                const userData = snapshot.val();
+                if (userData && userData.username === usernaame && userData.password === passwoord) {
+                    fetchData();
+                } else {
+                    window.location.href = 'index.html';
+                }
+            });
+
+            function fetchData() {
+                const dataTable = document.getElementById('data-table');
+                dataTable.innerHTML = '';
+
+                const dbRef = database.ref('/data');
+                dbRef.on('value', (snapshot) => {
+                    dataTable.innerHTML = ''; // Clear the table before adding new data
+                    snapshot.forEach((childSnapshot) => {
+                        const key = childSnapshot.key;
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${key}</td>
+                            <td>
+                                <button class="view-btn" onclick="viewData('${key}')"><i class="fas fa-eye"></i></button>
+                                <button class="delete-btn" onclick="deleteData('${key}')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        `;
+                        dataTable.appendChild(tr);
+                    });
+                });
+            }
+
+            window.viewData = function(key) {
+                window.location.href = `view.html?key=${key}`;
+            }
+
+            window.deleteData = function(key) {
+                const dbRef = database.ref(`/data/${key}`);
+                dbRef.remove()
+                    .then(() => {
+                        alert(`Data for ${key} deleted`);
+                        fetchData(); // Refresh the table data
+                    })
+                    .catch((error) => {
+                        console.error("Error deleting data:", error);
+                        alert("Failed to delete data. Please try again.");
+                    });
+            }
+
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                window.location.href = 'index.html';
+            });
+
+            document.getElementById('change-password-btn').addEventListener('click', () => {
+                window.location.href = 'changepass.html';
+            });
+        });
+    </script>
+</body>
+</html>
